@@ -5,6 +5,7 @@ import (
     "encoding/hex"
 	"math/rand"
 	"log"
+	"time"
 	"net/http"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -30,14 +31,27 @@ type Nasabah struct {
 	Token		string 	`json:"token"`
 	Tabungan	int 	`json:"tabungan"`
 }
+
+// Transaksi Struct(Model)
+type Transaksi struct {
+	Id			int  	`json:"id"`
+	From		string	`json:"from"`
+	To			string	`json:"to"`
+	Amount		int 	`json:"amount"`
+	Date		string 	`json:"date"`
+}
 // Report Struct(Model)
 type Report struct {
-	dataType 	string `json:"type"`
+	DataType 	string `json:"type"`
 	Message		string `json:"message"`
 }
 
 //Login
 func Login(w http.ResponseWriter, r *http.Request) {
+
+	LoginReport := Report{}
+	rmsg := ""
+
 	w.Header().Set("Content-Type", "application/json")
 
 	reqData, err := ioutil.ReadAll(r.Body)
@@ -60,8 +74,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	selectUser, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": nasabah.Username, "password": nasabah.Password}).ToSQL()
 	rows, err := db.Query(selectUser)
 	CheckError(err)
-
-	var report []Report
+	registered := false
 
 	defer rows.Close()
 	for rows.Next() {
@@ -78,19 +91,32 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			goQuery, _, _ := goqu.Update("nasabah").Set(goqu.Record{"token": GenerateSecureToken(5)}).Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
 			_, err := db.Query(goQuery)
 			CheckError(err)
-			report = append(report, Report{dataType:"login", Message: "sukses"})
+			rmsg = "sukses"
 		} else {
-			report = append(report, Report{dataType:"login", Message: "user already login"})
+			rmsg = "user already login"
 		}
+		registered = true
 	}
-	if report == nil {
-		report = append(report, Report{dataType:"login", Message: "no data"})
+
+	if registered == false {
+		rmsg = "user not registered"
 	}
-	json.NewEncoder(w).Encode(report)
+
+	LoginReport.DataType = "login"
+	LoginReport.Message = rmsg
+	reportJson, reportErr := json.Marshal(LoginReport)
+	if reportErr != nil {
+		CheckError(reportErr)
+	}
+	w.Write(reportJson)
 }
 
 //Logout
 func Logout(w http.ResponseWriter, r *http.Request) {
+
+	LogoutReport := Report{}
+	rmsg := ""
+
 	w.Header().Set("Content-Type", "application/json")
 
 	reqData, err := ioutil.ReadAll(r.Body)
@@ -113,10 +139,9 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	selectUser := fmt.Sprintf("SELECT * FROM nasabah WHERE username= '%s' AND password='%s'", nasabah.Username, nasabah.Password)
 	rows, err := db.Query(selectUser)
 	CheckError(err)
-
-	var report []Report
-
 	defer rows.Close()
+	
+	registered := false
 	for rows.Next() {
 		var id int
 		var username string
@@ -131,15 +156,131 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 			goQuery, _, _ := goqu.Update("nasabah").Set(goqu.Record{"token": ""}).Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
 			_, err := db.Query(goQuery)
 			CheckError(err)
-			report = append(report, Report{dataType:"logout", Message: "success"})
+			rmsg = "sukses"
 		} else {
-			report = append(report, Report{dataType:"logout", Message: "user already logout"})
+			rmsg = "user already logout"
+		}
+		registered = true
+	}
+
+	if registered == false {
+		rmsg = "user not registered"
+	}
+	
+	LogoutReport.DataType = "logout"
+	LogoutReport.Message = rmsg
+	reportJson, reportErr := json.Marshal(LogoutReport)
+	if reportErr != nil {
+		CheckError(reportErr)
+	}
+	w.Write(reportJson)
+}
+
+//Payment
+func Payment(w http.ResponseWriter, r *http.Request) {
+
+	PaymentReport := Report{}
+	rmsg := ""
+
+	w.Header().Set("Content-Type", "application/json")
+
+	reqData, err := ioutil.ReadAll(r.Body)
+	if err != nil{
+		log.Fatal(err)
+		return
+	}
+	var transaksi Transaksi
+	// unmarshal
+	if err := json.Unmarshal(reqData, &transaksi); err != nil {
+		panic(err)
+	}
+	CheckError(err)
+
+	// connection string
+	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+	// open database
+	db, err := sql.Open("postgres", psqlconn)
+
+	datauser, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": transaksi.From}).ToSQL()
+	//cek user sudah login
+	rows, err := db.Query(datauser)
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		var username string
+		var token string
+		var tabungan int
+
+		//data user from
+		err = rows.Scan(&id, &username, &token, &tabungan)
+		CheckError(err)
+
+		//jika token tidak kosong, maka user telah login
+		//bisa dilanjutkan ke langkah berikutnya
+		if token != "" {
+			//membutuhkan data user from dan to untuk
+			//memastikan sudah terdaftar di database
+			userFromCount := 0
+			userToCount := 0
+
+			userFrom, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": transaksi.From}).ToSQL()
+			rowsFrom, err := db.Query(userFrom)
+			CheckError(err)
+			defer rows.Close()
+
+			for rowsFrom.Next() {
+				userFromCount++
+			}
+
+			userTo, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": transaksi.To}).ToSQL()
+			rowsTo, err := db.Query(userTo)
+			CheckError(err)
+			defer rows.Close()
+
+			for rowsFrom.Next() {
+				userToCount++
+			}
+			for rowsTo.Next() {
+				userToCount++
+			}
+
+			//user from dan user to terdaftar di database
+			if userFromCount > 0 && userToCount > 0 {
+				//masukkan data transaksi
+
+				//validasi nilai transfer tidak lebih dari nilai saldo userFrom
+				if transaksi.Amount <= tabungan {
+					//lolos, nilai transaksi aman
+					transaksiQuery, _, _:= goqu.Insert("transaksi").
+					Cols("from", "to", "amount", "date").
+					Vals(goqu.Vals{transaksi.From, transaksi.To, transaksi.Amount, time.Now()}).ToSQL()
+					_, errQuery := db.Query(transaksiQuery)
+					CheckError(errQuery)
+					
+					//kurangi nilai tabungan dengan nilai transaksi
+					tabungan = tabungan - transaksi.Amount
+
+					updateTabungan, _, _ := goqu.Update("nasabah").Set(goqu.Record{"tabungan": tabungan}).Where(goqu.Ex{"username": transaksi.From}).ToSQL()
+					_, errTabungan := db.Query(updateTabungan)
+					CheckError(errTabungan)
+				} else {
+					rmsg = "you dont have enough money"
+				}
+			}
+			rmsg = "canceled, data not valid"
+		} else {
+			rmsg = "user need to login"
 		}
 	}
-	if report == nil {
-		report = append(report, Report{dataType:"logout", Message: "no data"})
+
+	PaymentReport.DataType = "payment"
+	PaymentReport.Message = rmsg
+	reportJson, reportErr := json.Marshal(PaymentReport)
+	if reportErr != nil {
+		CheckError(reportErr)
 	}
-	json.NewEncoder(w).Encode(report)
+	w.Write(reportJson)
 }
 
 func CheckError(err error) {
