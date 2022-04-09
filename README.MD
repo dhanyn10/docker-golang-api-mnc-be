@@ -1,7 +1,8 @@
 # Golang API Login-Logout-Transaction
 
 ### Contoh request
-- Login `GET` ke alamat `http://localhost:8000/api/login`. Pada postman, masukkan ke dalam `Body > raw > JSON`  
+- Login `GET` ke alamat `http://localhost:8000/api/login`  
+Pada postman, masukkan ke dalam `Body > raw > JSON`  
     ```json
     {
         "username": "hero",
@@ -22,7 +23,8 @@
         "message": "user already login"
     }
     ```
-- Logout `GET` ke alamat `http://localhost:8000/api/logout`. Pada postman, masukkan ke dalam `Body > raw > JSON`
+- Logout `GET` ke alamat `http://localhost:8000/api/logout`  
+Pada postman, masukkan ke dalam `Body > raw > JSON`
     ```json
     {
         "username": "hero",
