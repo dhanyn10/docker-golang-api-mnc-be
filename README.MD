@@ -60,7 +60,7 @@ pada postman, navigasi ke `Body > raw > JSON` dan masukkan
         "amount": 10000
     }
     ```
-    pastikan untuk login terlebih dulu, lalu lanjutkan untuk mulai melakukan transfer.  
+    pastikan untuk login terlebih dulu, lalu lanjutkan untuk melakukan transfer.  
     response jika sudah login
     ```json
     {
