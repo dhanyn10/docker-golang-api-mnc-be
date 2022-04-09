@@ -203,11 +203,13 @@ func Payment(w http.ResponseWriter, r *http.Request) {
 
 	datauser, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": transaksi.From}).ToSQL()
 	//cek user sudah login
-	rows, err := db.Query(datauser)
-	defer rows.Close()
+	rowsFrom, err := db.Query(datauser)
+	defer rowsFrom.Close()
 
 	registered:= false
-	for rows.Next() {
+	userToken := ""
+	tabunganFrom := 0
+	for rowsFrom.Next() {
 		var id int
 		var username string
 		var password string
@@ -215,25 +217,19 @@ func Payment(w http.ResponseWriter, r *http.Request) {
 		var tabungan int
 
 		//data user from
-		err = rows.Scan(&id, &username, &password, &token, &tabungan)
+		err = rowsFrom.Scan(&id, &username, &password, &token, &tabungan)
 		CheckError(err)
-
+		userToken = token
+		tabunganFrom = tabungan
+		registered = true
+	}
+	
 		//jika token tidak kosong, maka user telah login
 		//bisa dilanjutkan ke langkah berikutnya
-		if token != "" {
-			//membutuhkan data user from dan to untuk
+		if userToken != "" {
+			//membutuhkan data user to untuk
 			//memastikan sudah terdaftar di database
-			uFromExist := false
 			uToExist := false
-
-			userFrom, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": transaksi.From}).ToSQL()
-			rowsFrom, err := db.Query(userFrom)
-			CheckError(err)
-			defer rowsFrom.Close()
-
-			for rowsFrom.Next() {
-				uFromExist = true
-			}
 
 			userTo, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": transaksi.To}).ToSQL()
 			rowsTo, err := db.Query(userTo)
@@ -244,12 +240,12 @@ func Payment(w http.ResponseWriter, r *http.Request) {
 				uToExist = true
 			}
 
-			//user from dan user to terdaftar di database
-			if uFromExist == true && uToExist == true {
+			//user to terdaftar di database
+			if uToExist == true {
 				//masukkan data transaksi
 
 				//validasi nilai transfer tidak lebih dari nilai saldo userFrom
-				if transaksi.Amount <= tabungan {
+				if transaksi.Amount <= tabunganFrom {
 					//lolos, nilai transaksi aman
 					transaksiQuery, _, _:= goqu.Insert("transaksi").
 					Cols("from", "to", "amount", "datetime").
@@ -257,10 +253,29 @@ func Payment(w http.ResponseWriter, r *http.Request) {
 					_, errQuery := db.Query(transaksiQuery)
 					CheckError(errQuery)
 					
+					dataTabunganTo, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": transaksi.To}).ToSQL()
+					//cek user sudah login
+					rowsTabunganTo, errDataTabunganTo := db.Query(dataTabunganTo)
+					CheckError(errDataTabunganTo)
+					defer rowsTabunganTo.Close()
+
+					tabunganTo := 0
+					for rowsTabunganTo.Next() {
+						var id int
+						var username string
+						var password string
+						var token string
+						var tabungan int
+				
+						//ambil data tabungan dari database
+						err = rowsTabunganTo.Scan(&id, &username, &password, &token, &tabungan)
+						//atur nilai awal dengan nilai di database
+						tabunganTo = tabungan
+					}
 					//userFrom: kurangi nilai tabungan dengan nilai transaksi
-					tabunganFrom := tabungan - transaksi.Amount
+					tabunganFrom = tabunganFrom - transaksi.Amount
 					//userTo: tambah nilai tabungan dengan nilai transaksi
-					tabunganTo := tabungan + transaksi.Amount
+					tabunganTo = tabunganTo + transaksi.Amount
 
 					updateTabunganFrom, _, _ := goqu.Update("nasabah").Set(goqu.Record{"tabungan": tabunganFrom}).Where(goqu.Ex{"username": transaksi.From}).ToSQL()
 					_, errTabunganFrom := db.Query(updateTabunganFrom)
@@ -279,8 +294,6 @@ func Payment(w http.ResponseWriter, r *http.Request) {
 		} else {
 			rmsg = "user need to login"
 		}
-		registered = true
-	}
 
 	if registered == false {
 		rmsg = "user not registered"

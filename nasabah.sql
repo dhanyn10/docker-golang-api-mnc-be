@@ -29,7 +29,7 @@ CREATE TABLE "public"."transaksi" (
     "from" character varying(250) NOT NULL,
     "to" character varying(250) NOT NULL,
     "amount" money NOT NULL,
-    "datetime" date NOT NULL,
+    "datetime" text NOT NULL,
     CONSTRAINT "transaksi_pkey" PRIMARY KEY ("id")
 ) WITH (oids = false);
 
