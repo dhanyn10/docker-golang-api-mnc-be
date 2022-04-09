@@ -1,5 +1,11 @@
 # Golang API Login-Logout-Transaction
 
+### Instalasi
+Repo ini menggunakan docker. Jadi untuk menjalankan program hanya memerlukan command
+```bash
+docker-compose up -d
+```
+
 ### Contoh request
 - Login `GET` ke alamat `http://localhost:8000/api/login`  
 Pada postman, masukkan ke dalam `Body > raw > JSON`  
