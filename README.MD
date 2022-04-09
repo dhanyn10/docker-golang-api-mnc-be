@@ -51,3 +51,27 @@ Pada postman, masukkan ke dalam `Body > raw > JSON`
         "message": "user already logout"
     }
     ```
+- Payment `POST` ke alamat `http://localhost:8000/api/payment`  
+pada postman, masukkan ke dalam `Body > raw > JSON`
+    ```json
+    {
+        "from": "hero",
+        "to": "zeus",
+        "amount": 10000
+    }
+    ```
+    pastikan untuk login terlebih dulu, lalu lanjutkan untuk mulai melakukan transfer.  
+    response jika sudah login
+    ```json
+    {
+        "type": "payment",
+        "message": "transaction success"
+    }
+    ```
+    response jika sebelum login
+    ```json
+    {
+        "type": "payment",
+        "message": "user need to login"
+    }
+    ```
