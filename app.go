@@ -2,12 +2,15 @@ package main
 
 import (
 	"encoding/json"
+    "encoding/hex"
+	"math/rand"
 	"log"
 	"net/http"
 	"fmt"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"database/sql"
+	"github.com/doug-martin/goqu/v9"
 	_ "github.com/lib/pq"
 )
 
@@ -37,26 +40,22 @@ type Report struct {
 func Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// connection string
-	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
-		
-	// open database
-	db, err := sql.Open("postgres", psqlconn)
-
 	reqData, err := ioutil.ReadAll(r.Body)
 	if err != nil{
 		log.Fatal(err)
 		return
 	}
 	var nasabah Nasabah
-	
 	// unmarshal
 	if err := json.Unmarshal(reqData, &nasabah); err != nil {
 		panic(err)
 	}
-	
 	CheckError(err)
-	// fmt.Println(nasabah.Username)
+
+	// connection string
+	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+	// open database
+	db, err := sql.Open("postgres", psqlconn)
 
 	selectUser := fmt.Sprintf("SELECT * FROM nasabah WHERE username= '%s' AND password='%s'", nasabah.Username, nasabah.Password)
 	rows, err := db.Query(selectUser)
@@ -75,6 +74,12 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	
 		err = rows.Scan(&id, &username, &password, &token, &tabungan)
 		CheckError(err)
+		if token == "" {
+			goQuery := goqu.Insert("nasabah").Cols("token").Vals(goqu.Vals{GenerateSecureToken(10)})
+			sql, _, _ := goQuery.ToSQL()
+			_, err := db.Query(sql)
+			CheckError(err)
+		}
 		report = append(report, Report{dataType:"login", Message: "sukses"})
 	}
 	if report == nil {
@@ -87,6 +92,14 @@ func CheckError(err error) {
     if err != nil {
         fmt.Println(err)
     }
+}
+
+func GenerateSecureToken(length int) string {
+    b := make([]byte, length)
+    if _, err := rand.Read(b); err != nil {
+        return ""
+    }
+    return hex.EncodeToString(b)
 }
 
 func main() {
