@@ -8,7 +8,7 @@ docker-compose up -d
 
 ### Contoh request
 - Login `GET` ke alamat `http://localhost:8000/api/login`  
-Pada postman, masukkan ke dalam `Body > raw > JSON`  
+Pada postman, navigasi ke `Body > raw > JSON` dan masukkan
     ```json
     {
         "username": "hero",
@@ -30,7 +30,7 @@ Pada postman, masukkan ke dalam `Body > raw > JSON`
     }
     ```
 - Logout `GET` ke alamat `http://localhost:8000/api/logout`  
-Pada postman, masukkan ke dalam `Body > raw > JSON`
+Pada postman, navigasi ke `Body > raw > JSON` dan masukkan
     ```json
     {
         "username": "hero",
@@ -52,7 +52,7 @@ Pada postman, masukkan ke dalam `Body > raw > JSON`
     }
     ```
 - Payment `POST` ke alamat `http://localhost:8000/api/payment`  
-pada postman, masukkan ke dalam `Body > raw > JSON`
+pada postman, navigasi ke `Body > raw > JSON` dan masukkan
     ```json
     {
         "from": "hero",
