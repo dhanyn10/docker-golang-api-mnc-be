@@ -257,12 +257,18 @@ func Payment(w http.ResponseWriter, r *http.Request) {
 					_, errQuery := db.Query(transaksiQuery)
 					CheckError(errQuery)
 					
-					//kurangi nilai tabungan dengan nilai transaksi
-					tabungan = tabungan - transaksi.Amount
+					//userFrom: kurangi nilai tabungan dengan nilai transaksi
+					tabunganFrom := tabungan - transaksi.Amount
+					//userTo: tambah nilai tabungan dengan nilai transaksi
+					tabunganTo := tabungan + transaksi.Amount
 
-					updateTabungan, _, _ := goqu.Update("nasabah").Set(goqu.Record{"tabungan": tabungan}).Where(goqu.Ex{"username": transaksi.From}).ToSQL()
-					_, errTabungan := db.Query(updateTabungan)
-					CheckError(errTabungan)
+					updateTabunganFrom, _, _ := goqu.Update("nasabah").Set(goqu.Record{"tabungan": tabunganFrom}).Where(goqu.Ex{"username": transaksi.From}).ToSQL()
+					_, errTabunganFrom := db.Query(updateTabunganFrom)
+					CheckError(errTabunganFrom)
+
+					updateTabunganTo, _, _ := goqu.Update("nasabah").Set(goqu.Record{"tabungan": tabunganTo}).Where(goqu.Ex{"username": transaksi.To}).ToSQL()
+					_, errTabunganTo := db.Query(updateTabunganTo)
+					CheckError(errTabunganTo)
 					rmsg = "transaction success"
 				} else {
 					rmsg = "you dont have enough money"
