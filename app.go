@@ -57,7 +57,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	// open database
 	db, err := sql.Open("postgres", psqlconn)
 
-	selectUser := fmt.Sprintf("SELECT * FROM nasabah WHERE username= '%s' AND password='%s'", nasabah.Username, nasabah.Password)
+	selectUser, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": nasabah.Username, "password": nasabah.Password}).ToSQL()
 	rows, err := db.Query(selectUser)
 	CheckError(err)
 
@@ -75,15 +75,69 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		err = rows.Scan(&id, &username, &password, &token, &tabungan)
 		CheckError(err)
 		if token == "" {
-			goQuery := goqu.Insert("nasabah").Cols("token").Vals(goqu.Vals{GenerateSecureToken(10)})
-			sql, _, _ := goQuery.ToSQL()
-			_, err := db.Query(sql)
+			goQuery, _, _ := goqu.Update("nasabah").Set(goqu.Record{"token": GenerateSecureToken(5)}).Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
+			_, err := db.Query(goQuery)
 			CheckError(err)
+			report = append(report, Report{dataType:"login", Message: "sukses"})
+		} else {
+			report = append(report, Report{dataType:"login", Message: "user already login"})
 		}
-		report = append(report, Report{dataType:"login", Message: "sukses"})
 	}
 	if report == nil {
 		report = append(report, Report{dataType:"login", Message: "no data"})
+	}
+	json.NewEncoder(w).Encode(report)
+}
+
+//Logout
+func Logout(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	reqData, err := ioutil.ReadAll(r.Body)
+	if err != nil{
+		log.Fatal(err)
+		return
+	}
+	var nasabah Nasabah
+	// unmarshal
+	if err := json.Unmarshal(reqData, &nasabah); err != nil {
+		panic(err)
+	}
+	CheckError(err)
+
+	// connection string
+	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+	// open database
+	db, err := sql.Open("postgres", psqlconn)
+
+	selectUser := fmt.Sprintf("SELECT * FROM nasabah WHERE username= '%s' AND password='%s'", nasabah.Username, nasabah.Password)
+	rows, err := db.Query(selectUser)
+	CheckError(err)
+
+	var report []Report
+
+	defer rows.Close()
+	for rows.Next() {
+		var id int
+		var username string
+		var password string
+		var token string
+		var tabungan int
+
+	
+		err = rows.Scan(&id, &username, &password, &token, &tabungan)
+		CheckError(err)
+		if token != "" {
+			goQuery, _, _ := goqu.Update("nasabah").Set(goqu.Record{"token": ""}).Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
+			_, err := db.Query(goQuery)
+			CheckError(err)
+			report = append(report, Report{dataType:"logout", Message: "success"})
+		} else {
+			report = append(report, Report{dataType:"logout", Message: "user already logout"})
+		}
+	}
+	if report == nil {
+		report = append(report, Report{dataType:"logout", Message: "no data"})
 	}
 	json.NewEncoder(w).Encode(report)
 }
@@ -107,6 +161,7 @@ func main() {
 	r:= mux.NewRouter()
 
 	r.HandleFunc("/api/login", Login).Methods("GET")
+	r.HandleFunc("/api/logout", Logout).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(":8000", r))
 }
