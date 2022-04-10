@@ -17,8 +17,8 @@ CREATE TABLE "public"."nasabah" (
 ) WITH (oids = false);
 
 INSERT INTO "nasabah" ("id", "username", "password", "token", "tabungan") VALUES
-(1,	'hero',	'hero',	'token',	150000000),
-(2,	'zeus',	'zeus',	'token',	35000000);
+(1,	'hero',	'$2a$14$Ecpo5cbpO0TVTNHRxiHrS.OjzZjOxLKTVUOEV/dBfx8zfsbuhCivK',	'token',	150000000),
+(2,	'zeus',	'$2a$14$Eqqe7.mHNWAZWGk6FcauSem6tn6odv6UYCORBDNU57I/6H74q9gAu',	'token',	35000000);
 
 DROP TABLE IF EXISTS "transaksi";
 DROP SEQUENCE IF EXISTS transaksi_id_seq;

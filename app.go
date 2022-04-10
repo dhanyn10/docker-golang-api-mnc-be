@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"database/sql"
 	"github.com/doug-martin/goqu/v9"
+	"golang.org/x/crypto/bcrypt"
 	_ "github.com/lib/pq"
 )
 
@@ -46,6 +47,11 @@ type Report struct {
 	Message		string `json:"message"`
 }
 
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
 //Login
 func Login(w http.ResponseWriter, r *http.Request) {
 
@@ -71,12 +77,15 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	// open database
 	db, err := sql.Open("postgres", psqlconn)
 
-	selectUser, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": nasabah.Username, "password": nasabah.Password}).ToSQL()
+	selectUser, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
 	rows, err := db.Query(selectUser)
 	CheckError(err)
-	registered := false
-
 	defer rows.Close()
+
+
+	registered := false
+	loginToken := ""
+	loginPassword := ""
 	for rows.Next() {
 		var id int
 		var username string
@@ -87,18 +96,30 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	
 		err = rows.Scan(&id, &username, &password, &token, &tabungan)
 		CheckError(err)
-		if token == "" {
-			goQuery, _, _ := goqu.Update("nasabah").Set(goqu.Record{"token": GenerateSecureToken(5)}).Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
-			_, err := db.Query(goQuery)
-			CheckError(err)
-			rmsg = "sukses"
-		} else {
-			rmsg = "user already login"
-		}
 		registered = true
+		loginToken = token
+		loginPassword = password
 	}
 
-	if registered == false {
+	//lolos verifikasi cek username 
+	if registered == true {
+
+		//password benar
+		if CheckPasswordHash(nasabah.Password, loginPassword) == true {	
+			//token masing kosong, user baru pertama kali login
+			if loginToken == "" {
+				goQuery, _, _ := goqu.Update("nasabah").Set(goqu.Record{"token": GenerateSecureToken(5)}).Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
+				_, err := db.Query(goQuery)
+				CheckError(err)
+				rmsg = "sukses"
+			} else {
+				rmsg = "user already login"
+			}
+		} else {
+			//password tidak sama
+			rmsg = "wrong password"
+		}
+	} else {
 		rmsg = "user not registered"
 	}
 
@@ -136,12 +157,14 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	// open database
 	db, err := sql.Open("postgres", psqlconn)
 
-	selectUser := fmt.Sprintf("SELECT * FROM nasabah WHERE username= '%s' AND password='%s'", nasabah.Username, nasabah.Password)
+	selectUser, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
 	rows, err := db.Query(selectUser)
 	CheckError(err)
 	defer rows.Close()
 
 	registered := false
+	logoutPassword := ""
+	logoutToken := ""
 	for rows.Next() {
 		var id int
 		var username string
@@ -152,18 +175,28 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	
 		err = rows.Scan(&id, &username, &password, &token, &tabungan)
 		CheckError(err)
-		if token != "" {
-			goQuery, _, _ := goqu.Update("nasabah").Set(goqu.Record{"token": ""}).Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
-			_, err := db.Query(goQuery)
-			CheckError(err)
-			rmsg = "sukses"
-		} else {
-			rmsg = "user already logout"
-		}
+		logoutPassword = password
+		logoutToken = token
 		registered = true
 	}
-
-	if registered == false {
+	
+	//username terdaftar
+	if registered == true {
+		//password benar
+		if CheckPasswordHash(nasabah.Password, logoutPassword) {
+			//cek token
+			if logoutToken != "" {
+				goQuery, _, _ := goqu.Update("nasabah").Set(goqu.Record{"token": ""}).Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
+				_, err := db.Query(goQuery)
+				CheckError(err)
+				rmsg = "success"
+			} else {
+				rmsg = "user already logout"
+			}
+		} else {
+			rmsg = "wrong password"
+		}
+	} else {
 		rmsg = "user not registered"
 	}
 	
