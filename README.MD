@@ -75,3 +75,15 @@ pada postman, navigasi ke `Body > raw > JSON` dan masukkan
         "message": "user need to login"
     }
     ```
+
+### Database
+untuk melihat data apa saja yang sudah dibuat dari aktivitas API, 
+bisa melihatnya dengan melihat isi dari database. 
+Untuk mengakses database, bisa mengunjungi `localhost:8080` nanti akan 
+menemukan tampilan form login adminer. Isi dengan data berikut:
+```
+sistem  : PostgreSQL
+Server  : db
+pengguna: admin
+Sandi   : admin
+```
