@@ -115,7 +115,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 				goQuery, _, _ := goqu.Update("nasabah").Set(goqu.Record{"token": GenerateSecureToken(5)}).Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
 				_, err := db.Query(goQuery)
 				CheckError(err)
-				rmsg = "sukses"
+				rmsg = "success"
 			} else {
 				rmsg = "user already login"
 			}

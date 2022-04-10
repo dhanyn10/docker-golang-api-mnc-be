@@ -19,7 +19,7 @@ Pada postman, navigasi ke `Body > raw > JSON` dan masukkan
     ```json
     {
         "type": "login",
-        "message": "sukses"
+        "message": "success"
     }
     ```
     jika login berlebihan, maka muncul response  
@@ -41,7 +41,7 @@ Pada postman, navigasi ke `Body > raw > JSON` dan masukkan
     ```json
     {
         "type": "logout",
-        "message": "sukses"
+        "message": "success"
     }
     ```
     jika logout berlebihan, maka muncul response  
