@@ -52,6 +52,15 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
+func connectDB() *sql.DB{
+	// connection string
+	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+	// open database
+	db, err := sql.Open("postgres", psqlconn)
+	CheckError(err)
+	return db
+}
+
 //Login
 func Login(w http.ResponseWriter, r *http.Request) {
 
@@ -72,10 +81,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 	CheckError(err)
 
-	// connection string
-	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
-	// open database
-	db, err := sql.Open("postgres", psqlconn)
+	db := connectDB()
 
 	selectUser, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
 	rows, err := db.Query(selectUser)
@@ -152,10 +158,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	}
 	CheckError(err)
 
-	// connection string
-	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
-	// open database
-	db, err := sql.Open("postgres", psqlconn)
+	db := connectDB()
 
 	selectUser, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
 	rows, err := db.Query(selectUser)
@@ -179,7 +182,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		logoutToken = token
 		registered = true
 	}
-	
+
 	//username terdaftar
 	if registered == true {
 		//password benar
@@ -229,10 +232,7 @@ func Payment(w http.ResponseWriter, r *http.Request) {
 	}
 	CheckError(err)
 
-	// connection string
-	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
-	// open database
-	db, err := sql.Open("postgres", psqlconn)
+	db := connectDB()
 
 	datauser, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": transaksi.From}).ToSQL()
 	//cek user sudah login
