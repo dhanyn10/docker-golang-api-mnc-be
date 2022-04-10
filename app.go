@@ -61,6 +61,24 @@ func connectDB() *sql.DB{
 	CheckError(err)
 	return db
 }
+/**
+ * transaksi	: menunjukkan event yang sedang dilakukan sesuai dengan nama fungsinya
+ * 				-> login | logout | payment
+ * cond			: menunjukkan kondisi keberhasilan transaksi setiap menekan <Send>
+ * 				-> 1 (sukses) | 0 (gagal)
+ * activity		: menunjukkan activity yang sedang berlangsung, baik itu activity
+ * 				  yang dijalankan terhadap database (crud) maupun error message yang diterima
+ * 				  saat menjalankan transaksi.
+ */
+func ActivityHistory(transaksi string, cond int, activity string) {
+	db := connectDB()
+	//history
+	historyData, _, _:= goqu.Insert("history").
+	Cols("event", "cond", "activity", "datetime").
+	Vals(goqu.Vals{transaksi, cond, activity, time.Now()}).ToSQL()
+	_, errQuery := db.Query(historyData)
+	CheckError(errQuery)
+}
 
 //Login
 func Login(w http.ResponseWriter, r *http.Request) {
@@ -116,15 +134,23 @@ func Login(w http.ResponseWriter, r *http.Request) {
 				_, err := db.Query(goQuery)
 				CheckError(err)
 				rmsg = "success"
+				//history
+				ActivityHistory("login", 1, goQuery)
 			} else {
 				rmsg = "user already login"
+				//history
+				ActivityHistory("logout", 0, rmsg)
 			}
 		} else {
 			//password tidak sama
 			rmsg = "wrong password"
+			//history
+			ActivityHistory("logout", 0, rmsg)
 		}
 	} else {
 		rmsg = "user not registered"
+		//history
+		ActivityHistory("logout", 0, rmsg)
 	}
 
 	LoginReport.DataType = "login"
@@ -190,14 +216,22 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 				_, err := db.Query(goQuery)
 				CheckError(err)
 				rmsg = "success"
+				//history
+				ActivityHistory("logout", 1, goQuery)
 			} else {
 				rmsg = "user already logout"
+				//history
+				ActivityHistory("logout", 0, rmsg)
 			}
 		} else {
 			rmsg = "wrong password"
+			//history
+			ActivityHistory("logout", 0, rmsg)
 		}
 	} else {
 		rmsg = "user not registered"
+		//history
+		ActivityHistory("logout", 0, rmsg)
 	}
 	
 	LogoutReport.DataType = "logout"
@@ -281,7 +315,10 @@ func Payment(w http.ResponseWriter, r *http.Request) {
 					Vals(goqu.Vals{transaksi.From, transaksi.To, transaksi.Amount, time.Now()}).ToSQL()
 					_, errQuery := db.Query(transaksiQuery)
 					CheckError(errQuery)
-					
+
+					//history
+					ActivityHistory("payment", 1, transaksiQuery)
+
 					dataTabunganTo, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": transaksi.To}).ToSQL()
 					//cek user sudah login
 					rowsTabunganTo, errDataTabunganTo := db.Query(dataTabunganTo)
@@ -306,26 +343,45 @@ func Payment(w http.ResponseWriter, r *http.Request) {
 					//userTo: tambah nilai tabungan dengan nilai transaksi
 					tabunganTo = tabunganTo + transaksi.Amount
 
-					updateTabunganFrom, _, _ := goqu.Update("nasabah").Set(goqu.Record{"tabungan": tabunganFrom}).Where(goqu.Ex{"username": transaksi.From}).ToSQL()
+					updateTabunganFrom, _, _ := goqu.Update("nasabah").
+					Set(goqu.Record{"tabungan": tabunganFrom}).
+					Where(goqu.Ex{"username": transaksi.From}).
+					ToSQL()
 					_, errTabunganFrom := db.Query(updateTabunganFrom)
 					CheckError(errTabunganFrom)
+					//history
+					ActivityHistory("payment", 1, updateTabunganFrom)
 
-					updateTabunganTo, _, _ := goqu.Update("nasabah").Set(goqu.Record{"tabungan": tabunganTo}).Where(goqu.Ex{"username": transaksi.To}).ToSQL()
+					updateTabunganTo, _, _ := goqu.Update("nasabah").
+					Set(goqu.Record{"tabungan": tabunganTo}).
+					Where(goqu.Ex{"username": transaksi.To}).
+					ToSQL()
 					_, errTabunganTo := db.Query(updateTabunganTo)
 					CheckError(errTabunganTo)
+					
+					//history
+					ActivityHistory("payment", 1, updateTabunganTo)
 					rmsg = "transaction success"
 				} else {
 					rmsg = "you dont have enough money"
+					//history
+					ActivityHistory("payment", 0, rmsg)
 				}
 			} else {
 				rmsg = "canceled, data not valid"
+				//history
+				ActivityHistory("payment", 0, rmsg)
 			}
 		} else {
 			rmsg = "user need to login"
+			//history
+			ActivityHistory("payment", 0, rmsg)
 		}
 
 	if registered == false {
 		rmsg = "user not registered"
+		//history
+		ActivityHistory("payment", 1, rmsg)
 	}
 	PaymentReport.DataType = "payment"
 	PaymentReport.Message = rmsg

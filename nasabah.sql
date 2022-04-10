@@ -2,6 +2,20 @@
 
 \connect "admin";
 
+DROP TABLE IF EXISTS "history";
+DROP SEQUENCE IF EXISTS history_id_seq;
+CREATE SEQUENCE history_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1;
+
+CREATE TABLE "public"."history" (
+    "id" integer DEFAULT nextval('history_id_seq') NOT NULL,
+    "event" character varying(50) NOT NULL,
+    "cond" smallint NOT NULL,
+    "activity" text NOT NULL,
+    "datetime" text NOT NULL,
+    CONSTRAINT "history_pkey" PRIMARY KEY ("id")
+) WITH (oids = false);
+
+
 DROP TABLE IF EXISTS "nasabah";
 DROP SEQUENCE IF EXISTS nasabah_id_seq;
 CREATE SEQUENCE nasabah_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1;
@@ -34,4 +48,4 @@ CREATE TABLE "public"."transaksi" (
 ) WITH (oids = false);
 
 
--- 2022-04-09 16:05:58.180909+00
+-- 2022-04-10 05:51:00.049491+00
