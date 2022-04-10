@@ -82,12 +82,10 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	CheckError(err)
 
 	db := connectDB()
-
 	selectUser, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
 	rows, err := db.Query(selectUser)
 	CheckError(err)
 	defer rows.Close()
-
 
 	registered := false
 	loginToken := ""
@@ -98,7 +96,6 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		var password string
 		var token string
 		var tabungan int
-
 	
 		err = rows.Scan(&id, &username, &password, &token, &tabungan)
 		CheckError(err)
@@ -159,7 +156,6 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	CheckError(err)
 
 	db := connectDB()
-
 	selectUser, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": nasabah.Username}).ToSQL()
 	rows, err := db.Query(selectUser)
 	CheckError(err)
@@ -233,7 +229,6 @@ func Payment(w http.ResponseWriter, r *http.Request) {
 	CheckError(err)
 
 	db := connectDB()
-
 	datauser, _, _ := goqu.From("nasabah").Where(goqu.Ex{"username": transaksi.From}).ToSQL()
 	//cek user sudah login
 	rowsFrom, err := db.Query(datauser)
