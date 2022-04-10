@@ -8,9 +8,10 @@ import (
 	"time"
 	"net/http"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"database/sql"
+
+	"github.com/gorilla/mux"
 	"github.com/doug-martin/goqu/v9"
 	"golang.org/x/crypto/bcrypt"
 	_ "github.com/lib/pq"
